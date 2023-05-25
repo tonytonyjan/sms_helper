@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>簡訊報案小幫手</title>
+  </head>
+  <body>
+    <select id="to">
+      <option value="0911510914">臺北市</option>
+      <option value="0911510105">新北市</option>
+      <option value="0917110880">桃園市</option>
+      <option value="0911510915">臺中市</option>
+      <option value="0911510916">臺南市</option>
+      <option value="0911510917">高雄市</option>
+      <option value="0911510918">基隆市</option>
+      <option value="0911510919">新竹市</option>
+      <option value="0911510920">嘉義市</option>
+      <option value="0911510921">新竹縣</option>
+      <option value="0911510922">苗栗縣</option>
+      <option value="0911510933">彰化縣</option>
+      <option value="0911510923">南投縣</option>
+      <option value="0911510924">雲林縣</option>
+      <option value="0911510925">嘉義縣</option>
+      <option value="0911510926">屏東縣</option>
+      <option value="0911510927">宜蘭縣</option>
+      <option value="0911510928">花蓮縣</option>
+      <option value="0911510929">臺東縣</option>
+      <option value="0911510930">澎湖縣</option>
+      <option value="0911510931">金門縣</option>
+      <option value="0911510932">連江縣</option>
+    </select>
+    <form id="form" action="">
+      <textarea id="body" name="body"></textarea>
+      <br />
+      <button>發送簡訊</button>
+    </form>
+    <div id="history" style="display: none">
+      <h2>歷史紀錄</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>地點</th>
+            <th>內容</th>
+            <th colspan="2"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <script>
+      const $to = document.getElementById("to");
+      const $form = document.getElementById("form");
+      const $body = document.getElementById("body");
+      const $tbody = document.getElementById("tbody");
+      const $history = document.getElementById("history");
+      const location_map = [...$to.children].reduce((object, optionElement) => {
+        object[optionElement.value] = optionElement.childNodes[0].nodeValue;
+        return object;
+      }, {});
+      const request = indexedDB.open("main", 1);
+      const setFromAction = () => {
+        $form.action = `sms:${$to.value}`;
+      };
+      setFromAction();
+
+      request.addEventListener("success", ({ target: { result: db } }) => {
+        const setHistoryTable = () => {
+          const request = db
+            .transaction(["records"], "readonly")
+            .objectStore("records")
+            .getAll();
+          request.addEventListener("success", ({ target: { result } }) => {
+            if (result.length === 0) {
+              $history.style.display = "none";
+              return;
+            }
+            $tbody.replaceChildren();
+            $tbody.appendChild(
+              result
+                .sort(({ id: a }, { id: b }) => b - a)
+                .reduce((fragment, record) => {
+                  let td;
+                  let button;
+                  const tr = document.createElement("tr");
+                  td = document.createElement("td");
+                  td.appendChild(
+                    document.createTextNode(
+                      location_map[record.to] || record.to
+                    )
+                  );
+                  tr.appendChild(td);
+                  td = document.createElement("td");
+                  td.appendChild(document.createTextNode(record.body));
+                  tr.appendChild(td);
+                  td = document.createElement("td");
+                  button = document.createElement("button");
+                  button.addEventListener("click", () => {
+                    $to.value = record.to;
+                    $body.value = record.body;
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  });
+                  button.appendChild(document.createTextNode("再送一次"));
+                  td.appendChild(button);
+                  tr.appendChild(td);
+                  td = document.createElement("td");
+                  button = document.createElement("button");
+                  button.addEventListener("click", () => {
+                    const transaction = db.transaction(
+                      ["records"],
+                      "readwrite"
+                    );
+                    transaction.addEventListener("complete", () => {
+                      setHistoryTable();
+                    });
+                    transaction.objectStore("records").delete(record.id);
+                  });
+                  button.appendChild(document.createTextNode("刪除"));
+                  td.appendChild(button);
+                  tr.appendChild(td);
+                  fragment.appendChild(tr);
+                  return fragment;
+                }, document.createDocumentFragment())
+            );
+            $history.style.removeProperty("display");
+          });
+        };
+        $form.addEventListener("submit", (event) => {
+          const transaction = db.transaction(["records"], "readwrite");
+          transaction.addEventListener("complete", () => {
+            setHistoryTable();
+          });
+          transaction
+            .objectStore("records")
+            .add({ to: $to.value, body: $body.value });
+        });
+        setHistoryTable();
+      });
+      request.addEventListener(
+        "upgradeneeded",
+        ({ target: { result: db } }) => {
+          const objectStore = db.createObjectStore("records", {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          objectStore.createIndex("to_body_unique", ["to", "body"], {
+            unique: true,
+          });
+        }
+      );
+      $to.addEventListener("change", () => {
+        setFromAction();
+      });
+    </script>
+  </body>
+</html>
