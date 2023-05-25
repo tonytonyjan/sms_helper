@@ -80,7 +80,7 @@
             $tbody.replaceChildren();
             $tbody.appendChild(
               result
-                .sort(({ id: a }, { id: b }) => b - a)
+                .sort(({ timestamp: a }, { timestamp: b }) => b - a)
                 .reduce((fragment, record) => {
                   let td;
                   let button;
@@ -129,12 +129,34 @@
         };
         $form.addEventListener("submit", (event) => {
           const transaction = db.transaction(["records"], "readwrite");
+          const objectStore = transaction.objectStore("records");
           transaction.addEventListener("complete", () => {
             setHistoryTable();
           });
-          transaction
-            .objectStore("records")
-            .add({ to: $to.value, body: $body.value });
+          transaction.addEventListener("error", console.error);
+          objectStore
+            .openCursor()
+            .addEventListener("success", ({ target: { result: cursor } }) => {
+              if (cursor) {
+                if (
+                  cursor.value.to === $to.value &&
+                  cursor.value.body === $body.value
+                ) {
+                  objectStore.put({
+                    id: cursor.key,
+                    to: $to.value,
+                    body: $body.value,
+                    timestamp: Date.now(),
+                  });
+                } else cursor.continue();
+              } else {
+                objectStore.add({
+                  to: $to.value,
+                  body: $body.value,
+                  timestamp: Date.now(),
+                });
+              }
+            });
         });
         setHistoryTable();
       });
