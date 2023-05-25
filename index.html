@@ -106,6 +106,7 @@
                   button.addEventListener("click", () => {
                     $to.value = record.to;
                     $body.value = record.body;
+                    setFromAction();
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   });
                   button.appendChild(document.createTextNode("重送"));
