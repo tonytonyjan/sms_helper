@@ -46,7 +46,7 @@
       <table>
         <thead>
           <tr>
-            <th>地點</th>
+            <th style="width: 3em">地點</th>
             <th>內容</th>
             <th colspan="2"></th>
           </tr>
@@ -107,7 +107,7 @@
                     $body.value = record.body;
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   });
-                  button.appendChild(document.createTextNode("再送一次"));
+                  button.appendChild(document.createTextNode("重送"));
                   td.appendChild(button);
                   tr.appendChild(td);
                   td = document.createElement("td");
